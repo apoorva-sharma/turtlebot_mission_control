@@ -9,10 +9,12 @@ import numpy as np
 states = {'INIT':0,
           'HUMAN_CONTROL':1,
           'LOAD_MISSION':2,
-          'EXECUTE_MISSION':3
+          'EXECUTE_MISSION':3,
           'DONE':4}
 
 ctrlmodes = {'MOVING':0, 'LOOKING':1, 'STOP':2}
+
+WAYPOINTS_IN_MISSION = 6
 
 
 def pose_to_xyth(pose):
@@ -49,6 +51,7 @@ class Supervisor:
         self.goal = None
         self.mission = None
         self.has_valid_path = False
+        self.ctrlmode = 0
 
         self.state = states['INIT']
 
@@ -63,12 +66,13 @@ class Supervisor:
             self.mission == msg.data
 
     def update_waypoints(self):
-        for tag_number in self.mission:
-            try:
-                self.waypoint_offset.header.frame_id = "/tag_{0}".format(tag_number)
-                self.waypoint_locations[tag_number] = self.trans_listener.transformPose("/map", self.waypoint_offset)
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                pass
+        if self.mission:
+            for tag_number in self.mission:
+                try:
+                    self.waypoint_offset.header.frame_id = "/tag_{0}".format(tag_number)
+                    self.waypoint_locations[tag_number] = self.trans_listener.transformPose("/map", self.waypoint_offset)
+                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                    pass
 
     def run(self):
         rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
@@ -126,11 +130,13 @@ class Supervisor:
             else:
                 pass
 
+            rospy.logwarn(self.state)
             self.modePub.publish(self.ctrlmode)
 
-            msg = Float32MultiArray()
-            msg.data = self.goal
-            self.navPub.publish(msg)
+            if self.goal:
+                msg = Float32MultiArray()
+                msg.data = self.goal
+                self.navPub.publish(msg)
 
             rate.sleep()
 

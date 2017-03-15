@@ -85,10 +85,11 @@ class Navigator:
         if self.occupancy and self.has_robot_location and self.nav_sp:
             state_min = (-int(round(self.plan_horizon)), -int(round(self.plan_horizon)))
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
-            x_init = (int(round(robot_translation[0])), int(round(robot_translation[1])))
+            x_init = (round(robot_translation[0]/self.plan_resolution)*self.plan_resolution, 
+                        round(robot_translation[1]/self.plan_resolution)*self.plan_resolution)
             x_goal = (int(round(self.nav_sp[0])), int(round(self.nav_sp[1])))
             
-            if x_goal == x_init:
+            if np.linalg.norm(np.array(x_goal) - np.array(x_init)) < 0.1:
             	self.has_valid_path.publish(False)
                 return
 
@@ -102,6 +103,7 @@ class Navigator:
                 msg = Float32MultiArray()
                 msg.data = pose_sp
                 self.pose_sp_pub.publish(msg)
+                rospy.logwarn(robot_translation)
                 # astar.plot_path()
                 
                 path_msg = Path()
