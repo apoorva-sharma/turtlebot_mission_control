@@ -62,6 +62,19 @@ class Supervisor:
         while not rospy.is_shutdown():
             self.update_waypoints()
 
+            # Inputs
+            #  has_valid_path
+            #  waypoint_locations
+
+            # Internal States
+            #  states
+            #  mission
+
+            # Outputs
+            #  ctrlmode = fn(state, has_valid_path)
+            #  goal = fn(state, mission, has_valid_path, waypoint_locations )
+
+
 
             # FILL ME IN!
             # STATE MACHINE HERE
