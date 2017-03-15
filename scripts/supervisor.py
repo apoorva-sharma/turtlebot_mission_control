@@ -6,6 +6,12 @@ from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
 
+states = {'INIT':0,
+          'HUMAN_CONTROL_NOGOAL':1,
+          'HUMAN_CONTROL_HASGOAL':2,
+          'EXECUTE':3}
+
+
 def pose_to_xyth(pose):
     th = tf.transformations.euler_from_quaternion((pose.orientation.x,
                                                    pose.orientation.y,
@@ -33,7 +39,7 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.w = quat[3]
 
     def rviz_goal_callback(self, msg):
-        pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
+        [x_g,y_g,th_g] = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
         # this callback does nothing... yet!
 
     def update_waypoints(self):
@@ -50,6 +56,8 @@ class Supervisor:
             self.update_waypoints()
 
             # FILL ME IN!
+            # STATE MACHINE HERE
+
 
             rate.sleep()
 
