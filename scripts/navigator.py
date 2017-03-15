@@ -40,6 +40,8 @@ class Navigator:
 
         self.nav_sp = None
 
+        self.path = []
+
         self.trans_listener = tf.TransformListener()
 
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
@@ -85,16 +87,21 @@ class Navigator:
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
             x_init = (int(round(robot_translation[0])), int(round(robot_translation[1])))
             x_goal = (int(round(self.nav_sp[0])), int(round(self.nav_sp[1])))
+            
+            if x_goal == x_init:
+            	self.has_valid_path.publish(False)
+                return
+
             astar = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 
             rospy.loginfo("Computing navigation plan")
             if astar.solve():
                 
                 # a naive path follower we could use
-                # pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
-                # msg = Float32MultiArray()
-                # msg.data = pose_sp
-                # self.pose_sp_pub.publish(msg)
+                pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
+                msg = Float32MultiArray()
+                msg.data = pose_sp
+                self.pose_sp_pub.publish(msg)
                 # astar.plot_path()
                 
                 path_msg = Path()
@@ -106,9 +113,14 @@ class Navigator:
                     pose_st.header.frame_id = 'map'
                     path_msg.poses.append(pose_st)
                 self.nav_path_pub.publish(path_msg)
+                self.has_valid_path.publish(True)
+
 
             else:
                 rospy.logwarn("Could not find path")
+                self.has_valid_path.publish(False)
+
+
 
     def run(self):
         rospy.spin()
