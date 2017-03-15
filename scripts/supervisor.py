@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
+from std_msgs.msg import Int32MultiArray, Float32MultiArray, String, Int32
 from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
 
 states = {'INIT':0,
-          'HUMAN_CONTROL_NOGOAL':1,
-          'HUMAN_CONTROL_HASGOAL':2,
-          'EXECUTE':3}
+          'HUMAN_CONTROL':1,
+          'LOAD_MISSION':2,
+          'EXECUTE_MISSION':3
+          'DONE':4}
+
+ctrlmodes = {'MOVING':0, 'LOOKING':1, 'STOP':2}
 
 
 def pose_to_xyth(pose):
@@ -38,8 +41,12 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
 
+        self.goal = None
+
+        self.state = states['INIT']
+
     def rviz_goal_callback(self, msg):
-        [x_g,y_g,th_g] = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
+        self.goal = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
         # this callback does nothing... yet!
 
     def update_waypoints(self):
@@ -55,9 +62,45 @@ class Supervisor:
         while not rospy.is_shutdown():
             self.update_waypoints()
 
+
             # FILL ME IN!
             # STATE MACHINE HERE
+            if self.state == states['INIT']:
+                self.state = states['HUMAN_CONTROL']
 
+            elif self.state == states['HUMAN_CONTROL']:
+                if not self.has_valid_path:
+                    self.ctrlmode = ctrlmodes['LOOKING']
+                else:
+                    self.ctrlmode = ctrlmodes['MOVING']
+
+                if len(self.waypoint_locations) == WAYPOINTS_IN_MISSION:
+                    self.state = states['LOAD_MISSION']
+
+                         
+            elif self.state == states['LOAD_MISSION']:
+                if not self.has_valid_path:
+                    self.goal = waypoint_locations[self.mission[0]]
+                    self.mission = self.mission[1:]
+                    self.state = states['EXECUTE_MISSION']
+
+            elif self.state == states['EXECUTE_MISSION']:
+                self.ctrlmode = ctrlmodes['MOVING']
+
+                if self.has_valid_path:
+                    self.state = states['LOAD_MISSION']
+
+
+            elif self.state == states['DONE']:
+                pass
+            else:
+                pass
+
+            self.modePub.publish(self.ctrlmode)
+
+            msg = Float32MultiArray()
+            msg.data = self.goal
+            self.navPub.publish(msg)
 
             rate.sleep()
 
