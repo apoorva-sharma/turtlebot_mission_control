@@ -14,12 +14,10 @@
 # PUBLISHES:
 #  - /cmd_vel_mux/navi_input
 
-
-
 # copy from hw1
 
 import rospy
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray, Int32
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Twist
 import tf
@@ -33,7 +31,8 @@ class Controller:
 
     def __init__(self):
         rospy.init_node('turtlebot_controller', anonymous=True)
-        rospy.Subscriber('/turtlebot_controller/position_goal', Float32MultiArray, self.GScallback )
+        rospy.Subscriber('/turtlebot_mission/position_goal', Float32MultiArray, self.GScallback )
+        rospy.Subscriber('/turtlebot_mission/ctrl_mode', Int32, self.ctrl_callback)
         #rospy.Subscriber('/gazebo/model_states', ModelStates, self.MScallback)
         self.trans_listener = tf.TransformListener()
         self.pub = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
@@ -45,13 +44,16 @@ class Controller:
         self.y_g = 0.0
         self.mode = 0
 
+
+    def ctrl_callback(self, data):
+        self.mode = data
+
     def GScallback(self, data):
         layout = data.layout
         arr = data.data
         self.x_g = arr[0]
         self.y_g = arr[1]
         self.th_g = arr[2]
-        self.mode = round(arr[3])
 
         print "x:", self.x_g
         print "y:", self.y_g
@@ -119,8 +121,8 @@ class Controller:
             if self.mode == MOVING:
                 ctrl_output = self.get_ctrl_output()
             elif self.mode == LOOKING:
-                ctrl_output.linear.x = 0.01
-                ctrl_output.angular.z = 0.2
+                ctrl_output.linear.x = 0.0
+                ctrl_output.angular.z = 0.2 #maybe change this value to go faster
 
             self.pub.publish(ctrl_output)
             rate.sleep()
