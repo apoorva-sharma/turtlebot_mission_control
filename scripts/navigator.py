@@ -87,15 +87,17 @@ class Navigator:
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
             x_init = (round(robot_translation[0]/self.plan_resolution)*self.plan_resolution, 
                         round(robot_translation[1]/self.plan_resolution)*self.plan_resolution)
-            x_goal = (round(self.nav_sp[0]/self.plan_resolution)*self.plan_resolution, round(self.nav_sp[1]/self.plan_resolution)*self.[plan_resolution])
+            x_goal = (round(self.nav_sp[0]/self.plan_resolution)*self.plan_resolution, round(self.nav_sp[1]/self.plan_resolution)*self.plan_resolution)
             
             if np.linalg.norm(np.array(x_goal) - np.array(x_init)) < 0.1:
                 if np.linalg.norm(np.array(robot_translation[0:1]) - np.array(self.nav_sp[0:1])) < 0.1:
+                    rospy.logwarn("I have reached my target" + str(self.nav_sp))
                     self.has_valid_path.publish(False)
                     return
                 msg = Float32MultiArray()
                 msg.data = self.nav_sp
                 self.pose_sp_pub.publish(msg)
+                self.has_valid_path.publish(True)
                 return
 
 

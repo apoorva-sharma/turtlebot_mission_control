@@ -123,7 +123,7 @@ class Controller:
                 ctrl_output = self.get_ctrl_output()
             elif self.mode == LOOKING:
                 ctrl_output.linear.x = 0.0
-                ctrl_output.angular.z = 0.2 #maybe change this value to go faster
+                ctrl_output.angular.z = 0.45 #maybe change this value to go faster
 
             self.pub.publish(ctrl_output)
             rate.sleep()

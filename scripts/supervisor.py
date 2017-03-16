@@ -52,6 +52,7 @@ class Supervisor:
         self.mission = None
         self.has_valid_path = False
         self.ctrlmode = 0
+        self.has_robot_location = False
 
         self.state = states['INIT']
 
@@ -59,10 +60,10 @@ class Supervisor:
         self.goal = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
 
     def valid_path_callback(self, msg):
-        self.has_valid_path = msg
+        self.has_valid_path = msg.data
 
     def mission_callback(self, msg):
-        if not self.mission:
+        if self.mission == None:
             rospy.logwarn("Received mission")
             self.mission = msg.data
             self.num_tags_in_mission = np.unique(self.mission).size
@@ -81,6 +82,14 @@ class Supervisor:
     def run(self):
         rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
+            try:
+                (robot_translation,robot_rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
+                self.has_robot_location = True
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                robot_translation = (0,0,0)
+                robot_rotation = (0,0,0,1)
+                self.has_robot_location = False
+
             self.update_waypoints()
 
             # Inputs
@@ -115,11 +124,13 @@ class Supervisor:
                          
             elif self.state == states['LOAD_MISSION']:
                 if not self.has_valid_path:
+                    rospy.logwarn("len(mission): "+str(len(self.mission)))
                     if len(self.mission) == 0:
                         self.state = states['DONE']
                     else:
-                        self.goal = pose_to_xyth(waypoint_locations[self.mission[0]])
+                        self.goal = pose_to_xyth(self.waypoint_locations[self.mission[0]].pose)
                         self.mission = self.mission[1:]
+                        rospy.logwarn("Mission is now: "+str(self.mission))
                         self.state = states['EXECUTE_MISSION']
 
             elif self.state == states['EXECUTE_MISSION']:
@@ -128,14 +139,21 @@ class Supervisor:
                 if self.has_valid_path:
                     self.state = states['LOAD_MISSION']
 
+                if self.has_robot_location:
+                    if np.linalg.norm(np.array(robot_translation[0:1]) - np.array(self.goal[0:1])) < 0.1:
+                        self.state = states['LOAD_MISSION']
+
+
+
 
             elif self.state == states['DONE']:
-                pass
+                self.ctrlmode = ctrlmodes['STOP']
             else:
                 pass
 
             rospy.logwarn(self.state)
             self.modePub.publish(self.ctrlmode)
+            rospy.logwarn(self.goal)
 
             if self.goal:
                 msg = Float32MultiArray()
