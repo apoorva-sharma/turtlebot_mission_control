@@ -63,7 +63,9 @@ class Supervisor:
 
     def mission_callback(self, msg):
         if not self.mission:
-            self.mission == msg.data
+            rospy.logwarn("Received mission")
+            self.mission = msg.data
+            self.num_tags_in_mission = np.unique(self.mission).size
 
     def update_waypoints(self):
         if self.mission:
@@ -73,6 +75,8 @@ class Supervisor:
                     self.waypoint_locations[tag_number] = self.trans_listener.transformPose("/map", self.waypoint_offset)
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                     pass
+        rospy.logwarn("length of waypoints: " + str(len(self.waypoint_locations)))
+
 
     def run(self):
         rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
@@ -104,9 +108,9 @@ class Supervisor:
                     self.ctrlmode = ctrlmodes['LOOKING']
                 else:
                     self.ctrlmode = ctrlmodes['MOVING']
-
-                if len(self.waypoint_locations) == WAYPOINTS_IN_MISSION:
-                    self.state = states['LOAD_MISSION']
+                if self.mission:
+                    if len(self.waypoint_locations) == self.num_tags_in_mission:
+                        self.state = states['LOAD_MISSION']
 
                          
             elif self.state == states['LOAD_MISSION']:

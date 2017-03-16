@@ -87,11 +87,17 @@ class Navigator:
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
             x_init = (round(robot_translation[0]/self.plan_resolution)*self.plan_resolution, 
                         round(robot_translation[1]/self.plan_resolution)*self.plan_resolution)
-            x_goal = (int(round(self.nav_sp[0])), int(round(self.nav_sp[1])))
+            x_goal = (round(self.nav_sp[0]/self.plan_resolution)*self.plan_resolution, round(self.nav_sp[1]/self.plan_resolution)*self.[plan_resolution])
             
             if np.linalg.norm(np.array(x_goal) - np.array(x_init)) < 0.1:
-            	self.has_valid_path.publish(False)
+                if np.linalg.norm(np.array(robot_translation[0:1]) - np.array(self.nav_sp[0:1])) < 0.1:
+                    self.has_valid_path.publish(False)
+                    return
+                msg = Float32MultiArray()
+                msg.data = self.nav_sp
+                self.pose_sp_pub.publish(msg)
                 return
+
 
             astar = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 
@@ -99,7 +105,15 @@ class Navigator:
             if astar.solve():
                 
                 # a naive path follower we could use
-                pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
+
+                # make angle the angle between point before and point after
+                if(len(astar.path) > 2):
+                    angle = np.arctan2( astar.path[2][1] - astar.path[0][1], 
+                                        astar.path[2][0] - astar.path[0][0])
+                else:
+                    angle = self.nav_sp[2]
+
+                pose_sp = (astar.path[1][0],astar.path[1][1],angle)
                 msg = Float32MultiArray()
                 msg.data = pose_sp
                 self.pose_sp_pub.publish(msg)
@@ -121,6 +135,9 @@ class Navigator:
             else:
                 rospy.logwarn("Could not find path")
                 self.has_valid_path.publish(False)
+
+        if not self.occupancy:
+            rospy.logwarn('No occupancy grid')
 
 
 

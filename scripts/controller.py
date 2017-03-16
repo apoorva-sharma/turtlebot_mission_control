@@ -42,7 +42,7 @@ class Controller:
         self.th_g = 0.0
         self.x_g = 0.0
         self.y_g = 0.0
-        self.mode = 0
+        self.mode = 2
 
 
     def ctrl_callback(self, data):
@@ -101,7 +101,7 @@ class Controller:
         alpha, delta = self.wrapToPi([bearingToGoal - self.theta, bearingToGoal - th_g])
 
         # use these coordinates to comput control inputs
-        k1 = 0.7
+        k1 = 0.5
         k2 = 0.7
         k3 = 0.8
 
@@ -120,10 +120,8 @@ class Controller:
             ctrl_output = Twist()
             rospy.logwarn(self.mode)
             if self.mode == MOVING:
-                rospy.logwarn('moving')
                 ctrl_output = self.get_ctrl_output()
             elif self.mode == LOOKING:
-                rospy.logwarn('looking')
                 ctrl_output.linear.x = 0.0
                 ctrl_output.angular.z = 0.2 #maybe change this value to go faster
 
